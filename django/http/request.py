@@ -402,10 +402,16 @@ class HttpRequest:
 
     def read(self, *args, **kwargs):
         self._read_started = True
-        try:
-            return self._stream.read(*args, **kwargs)
-        except OSError as e:
-            raise UnreadablePostError(*e.args) from e
+        content_length = self.META.get('CONTENT_LENGTH')
+        content_length = int(content_length)
+        data = self._stream.read(content_length)
+        if content_length and int(content_length) != len(data):
+            self._body = b''
+            raise UnreadablePostError('Invalid content length')
+        else:
+            self._stream = BytesIO(data)
+            self._body = data
+        return self._body
 
     def readline(self, *args, **kwargs):
         self._read_started = True
